@@ -6,6 +6,13 @@
 #include "decompiler/level_extractor/MercData.h"
 #include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/util/goal_data_reader.h"
+#include "goalc/build_level/gltf_mesh_extract.h"
+#include "third-party/tiny_gltf/tiny_gltf.h"
+#include "common/util/json_util.h"
+#include <third-party/json.hpp>
+#include <stdlib.h>
+#include "common/util/Timer.h"
+#include <iostream>
 
 namespace decompiler {
 
@@ -816,6 +823,202 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         debug_dump_to_ply(result.draws, result.vertices));
   }
 
+  std::string ctrl_filename = debug_name;
+  ctrl_filename = ctrl_filename.append(".glb");
+  auto replacements_path = file_util::get_jak_project_dir() / "merc_replacements" / ctrl_filename;
+  float scale = 239.2916965781287;
+  if (fs::exists(replacements_path)) {
+
+    lg::info("Reading gltf mesh: {}", replacements_path.string());
+    Timer read_timer;
+    tinygltf::TinyGLTF loader;
+    tinygltf::Model model;
+    std::string err, warn;
+    bool res = loader.LoadBinaryFromFile(&model, &err, &warn, replacements_path.string());
+    ASSERT_MSG(warn.empty(), warn.c_str());
+    ASSERT_MSG(err.empty(), err.c_str());
+    ASSERT_MSG(res, "Failed to load GLTF file!");
+
+    lg::info("GLTF total took {:.2f} ms", read_timer.getMs());
+
+    auto& mesh = model.meshes[0];
+
+    auto& primitive = mesh.primitives[0];
+
+    const tinygltf::Accessor& accessor = model.accessors[primitive.attributes["POSITION"]];
+
+    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+
+    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+    const float* positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+    int glb_index = 0;
+    std::vector<int> prev_pos = {0,0,0};
+
+    for (size_t i = 0; i < result.vertices.size(); ++i) {
+      std::vector<int> curr_pos = {std::round(scale*positions[glb_index * 3 + 0]),std::round(scale*positions[glb_index * 3 + 1]),std::round(scale*positions[glb_index * 3 + 2])};
+      
+      while ((curr_pos[0] == prev_pos[0])
+        &&(curr_pos[1] == prev_pos[1])
+        &&(curr_pos[2] == prev_pos[2])) {
+          glb_index++;
+          prev_pos = curr_pos;
+          curr_pos = {std::round(scale*positions[glb_index * 3 + 0]),std::round(scale*positions[glb_index * 3 + 1]),std::round(scale*positions[glb_index * 3 + 2])};
+        }
+      result.vertices[i].pos[0] = curr_pos[0];
+      result.vertices[i].pos[1] = curr_pos[1];
+      result.vertices[i].pos[2] = curr_pos[2];
+      //print out the new vertices
+      //std::cout << "(" << curr_pos[0] << ", " << curr_pos[1] << ", " << curr_pos[2] << ")" << std::endl;
+      glb_index++;
+      prev_pos = curr_pos;
+    }
+
+    //use as a dummy vector for each draw
+    std::vector<u32> new_indices = {};
+
+    //draw 0 around the rim of the coin
+    for (size_t i = 0; i < 132; ++i) {
+      new_indices.push_back(i);
+    }
+
+    //reconnect back to beginning
+
+    new_indices.push_back(0);
+    new_indices.push_back(1);
+    new_indices.push_back(4294967295); //end
+
+    result.draws[0].indices = new_indices;
+    new_indices = {};
+
+    //draw 1 +x face
+
+    for (size_t i = 1; i < 133; i+=2) {
+      new_indices.push_back(i);
+      new_indices.push_back(132);
+    }
+
+    new_indices.push_back(1);
+
+    new_indices.push_back(4294967295); //end
+
+    result.draws[1].indices = new_indices;
+    new_indices = {};
+
+    //draw 2 -x face
+
+    for (size_t i = 0; i < 132; i+=2) {
+      new_indices.push_back(i);
+      new_indices.push_back(133);
+    }
+
+    new_indices.push_back(0);
+
+    new_indices.push_back(4294967295); //end
+
+    result.draws[2].indices = new_indices;
+    new_indices = {};
+
+    //clear out any draws after 2
+
+    new_indices = {4294967295};
+
+    for (size_t i = 3; i < result.draws.size(); ++i) {
+      result.draws[i].indices = new_indices;
+    }
+
+    //print out all the draw indices
+    //for (auto draw : result.draws) {for (auto idx : draw.indices) {std::cout << idx << std::endl;}}
+
+    std::vector<std::vector<float>> uvtable;
+    uvtable.push_back({0.612238883972168,  0.521661639213562});
+    uvtable.push_back({0.6144136786460876, 0.5647890567779541});
+    uvtable.push_back({0.6187437772750854, 0.6073297262191772});
+    uvtable.push_back({0.6251897811889648, 0.6488984227180481});
+    uvtable.push_back({0.6336933374404907, 0.6891186237335205});
+    uvtable.push_back({0.6441775560379028, 0.7276262640953064});
+    uvtable.push_back({0.6565472483634949, 0.7640724778175354});
+    uvtable.push_back({0.670690655708313,  0.7981271147727966});
+    uvtable.push_back({0.6864794492721558, 0.8294819593429565});
+    uvtable.push_back({0.7037708759307861, 0.8578528761863708});
+    uvtable.push_back({0.7224531769752502, 0.8829836249351501});
+    uvtable.push_back({0.7422677874565125, 0.9046454429626465});
+    uvtable.push_back({0.7630800604820251, 0.9226427674293518});
+    uvtable.push_back({0.7846566438674927, 0.9368122220039368});
+    uvtable.push_back({0.8068914413452148, 0.9470263123512268});
+    uvtable.push_back({0.8295384645462036, 0.9531919360160828});
+    uvtable.push_back({0.8523930907249451, 0.955253541469574});
+    uvtable.push_back({0.8295384645462036, 0.9531919360160828});
+    uvtable.push_back({0.8068914413452148, 0.9470263123512268});
+    uvtable.push_back({0.7846566438674927, 0.9368122220039368});
+    uvtable.push_back({0.7630800604820251, 0.9226427674293518});
+    uvtable.push_back({0.7422677874565125, 0.9046454429626465});
+    uvtable.push_back({0.7224531769752502, 0.8829836249351501});
+    uvtable.push_back({0.7037708759307861, 0.8578528761863708});
+    uvtable.push_back({0.6864794492721558, 0.8294819593429565});
+    uvtable.push_back({0.670690655708313,  0.7981271147727966});
+    uvtable.push_back({0.6565472483634949, 0.7640724778175354});
+    uvtable.push_back({0.6441775560379028, 0.7276262640953064});
+    uvtable.push_back({0.6336933374404907, 0.6891186237335205});
+    uvtable.push_back({0.6251897811889648, 0.6488984227180481});
+    uvtable.push_back({0.6187437772750854, 0.6073297262191772});
+    uvtable.push_back({0.6144136786460876, 0.5647890567779541});
+    uvtable.push_back({0.612238883972168,  0.521661639213562});
+    uvtable.push_back({0.612238883972168,  1-0.521661639213562});
+    uvtable.push_back({0.6144136786460876, 1-0.5647890567779541});
+    uvtable.push_back({0.6187437772750854, 1-0.6073297262191772});
+    uvtable.push_back({0.6251897811889648, 1-0.6488984227180481});
+    uvtable.push_back({0.6336933374404907, 1-0.6891186237335205});
+    uvtable.push_back({0.6441775560379028, 1-0.7276262640953064});
+    uvtable.push_back({0.6565472483634949, 1-0.7640724778175354});
+    uvtable.push_back({0.670690655708313,  1-0.7981271147727966});
+    uvtable.push_back({0.6864794492721558, 1-0.8294819593429565});
+    uvtable.push_back({0.7037708759307861, 1-0.8578528761863708});
+    uvtable.push_back({0.7224531769752502, 1-0.8829836249351501});
+    uvtable.push_back({0.7422677874565125, 1-0.9046454429626465});
+    uvtable.push_back({0.7630800604820251, 1-0.9226427674293518});
+    uvtable.push_back({0.7846566438674927, 1-0.9368122220039368});
+    uvtable.push_back({0.8068914413452148, 1-0.9470263123512268});
+    uvtable.push_back({0.8295384645462036, 1-0.9531919360160828});
+    uvtable.push_back({0.8523930907249451, 1-0.955253541469574});
+    uvtable.push_back({0.8295384645462036, 1-0.9531919360160828});
+    uvtable.push_back({0.8068914413452148, 1-0.9470263123512268});
+    uvtable.push_back({0.7846566438674927, 1-0.9368122220039368});
+    uvtable.push_back({0.7630800604820251, 1-0.9226427674293518});
+    uvtable.push_back({0.7422677874565125, 1-0.9046454429626465});
+    uvtable.push_back({0.7224531769752502, 1-0.8829836249351501});
+    uvtable.push_back({0.7037708759307861, 1-0.8578528761863708});
+    uvtable.push_back({0.6864794492721558, 1-0.8294819593429565});
+    uvtable.push_back({0.670690655708313,  1-0.7981271147727966});
+    uvtable.push_back({0.6565472483634949, 1-0.7640724778175354});
+    uvtable.push_back({0.6441775560379028, 1-0.7276262640953064});
+    uvtable.push_back({0.6336933374404907, 1-0.6891186237335205});
+    uvtable.push_back({0.6251897811889648, 1-0.6488984227180481});
+    uvtable.push_back({0.6187437772750854, 1-0.6073297262191772});
+    uvtable.push_back({0.6144136786460876, 1-0.5647890567779541});
+    uvtable.push_back({0.612238883972168,  1-0.521661639213562});
+
+    for (size_t i = 0; i < 2*uvtable.size(); i+=2) {
+      result.vertices[i].st[0] = uvtable[i/2][0];
+      result.vertices[i].st[1] = uvtable[i/2][1];
+    }
+
+    for (size_t i = 0; i < 2*uvtable.size(); i+=2) {
+      result.vertices[i+1].st[0] = 1-uvtable[i/2][0];
+      result.vertices[i+1].st[1] = uvtable[i/2][1];
+    }
+
+    result.vertices[133].st[0] = 0.852;
+    result.vertices[133].st[1] = 0.5;
+    result.vertices[132].st[0] = 0.148;
+    result.vertices[132].st[1] = 0.5;
+
+    //print out all the vertices' uv coordinates
+    //for (auto vtx : result.vertices) {std::cout << "(" << vtx.st[0] << ", " << vtx.st[1] << ")" << std::endl;}
+
+  }
+
   return result;
 }
 
@@ -827,11 +1030,11 @@ u8 convert_mat(int in) {
   }
 }
 
-tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx, float xyz_scale) {
+tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx) {
   tfrag3::MercVertex out;
-  out.pos[0] = vtx.pos[0] * xyz_scale;
-  out.pos[1] = vtx.pos[1] * xyz_scale;
-  out.pos[2] = vtx.pos[2] * xyz_scale;
+  out.pos[0] = vtx.pos[0];
+  out.pos[1] = vtx.pos[1];
+  out.pos[2] = vtx.pos[2];
   out.pad0 = 0;
   out.normal[0] = vtx.nrm[0];
   out.normal[1] = vtx.nrm[1];
@@ -896,6 +1099,7 @@ void extract_merc(const ObjectFileData& ag_data,
     auto& ctrl = ctrls[ci];
 
     pc_ctrl.name = ctrl.name;
+    pc_ctrl.scale_xyz = ctrl.header.xyz_scale;
     pc_ctrl.max_draws = 0;
     pc_ctrl.max_bones = 0;
 
@@ -905,7 +1109,7 @@ void extract_merc(const ObjectFileData& ag_data,
       auto& effect = all_effects[ci][ei];
       u32 first_vertex = out.merc_data.vertices.size();
       for (auto& vtx : effect.vertices) {
-        auto cvtx = convert_vertex(vtx, ctrl.header.xyz_scale);
+        auto cvtx = convert_vertex(vtx);
         out.merc_data.vertices.push_back(cvtx);
         for (int i = 0; i < 3; i++) {
           pc_ctrl.max_bones = std::max(pc_ctrl.max_bones, (u32)cvtx.mats[i]);
