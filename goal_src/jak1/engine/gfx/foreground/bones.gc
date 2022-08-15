@@ -1265,8 +1265,9 @@
                    (set! used-mercneric 1)
                    used-mercneric
                    )
-                  ((nonzero? (-> geom effect effect-idx envmap-usage))
-                   ;; if we need envmap, set it up.
+                  ;;((nonzero? (-> geom effect effect-idx envmap-usage))
+                  (#f
+                  ;; if we need envmap, set it up.
 
                    ;; hack:
                    ;; the game switches from mercneric to merc after the envmap is faded out.
