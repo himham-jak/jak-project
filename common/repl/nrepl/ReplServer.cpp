@@ -131,13 +131,13 @@ void ReplServer::http_response(int socket) {
         lg::error("Failed to open file");
   }
 
-  //end http
+  //start http message
   write_to_socket(socket, header.c_str(), header.size());
 
   // Read the file line by line into a string
   std::string line;
   while (getline(file, line)) {
-        // Process each line as needed
+        // send each line as an http chunk
         send_str_chunk(socket,line);
     }
 
@@ -145,7 +145,7 @@ void ReplServer::http_response(int socket) {
   lg::info("Closing html file now");
   file.close();
 
-  //end http
+  //end http message
   write_to_socket(socket, end.c_str(), end.size());
 
 }
