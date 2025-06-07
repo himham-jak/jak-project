@@ -94,8 +94,8 @@ std::string decToHexa(int n)
 }
 
 std::string str_to_chunk(const std::string& data) {
-  lg::error("Datasize d {}",data.size());
-  lg::error("Datasize h {}",decToHexa(data.size()).c_str());
+  //lg::info("Datasize d {}",data.size());
+  //lg::info("Datasize h {}",decToHexa(data.size()).c_str());
 
     // Format chunk: <hex-size>\r\n<data>\r\n
     std::string chunk = decToHexa(data.size()) + "\r\n" + data + "\r\n";
@@ -111,17 +111,15 @@ void ReplServer::http_response(int socket) {
     "Connection: keep-alive\r\n"
     "\r\n";
 
-  std::string chunk1 = "b\r\nHello World\r\n"; // 0xb=11 bytes, ends with \r\n
-  std::string chunk2 = "5\r\n12345\r\n";
+  std::string chunk1 = str_to_chunk("<html>");
+  std::string chunk2 = str_to_chunk("<h1>Hello World</h1><br><hr><br>Test");
+  std::string chunk3 = str_to_chunk("</html>");
   std::string end = "0\r\n\r\n";
 
-  std::string chunk3 = str_to_chunk("Hello ze World!");
-  lg::error(chunk3);
-
   write_to_socket(socket, header.c_str(), header.size());
-  write_to_socket(socket, chunk3.c_str(), chunk3.size());
   write_to_socket(socket, chunk1.c_str(), chunk1.size());
   write_to_socket(socket, chunk2.c_str(), chunk2.size());
+  write_to_socket(socket, chunk3.c_str(), chunk3.size());
   write_to_socket(socket, end.c_str(), end.size());
 
 }
@@ -230,7 +228,7 @@ std::optional<std::string> ReplServer::get_msg() {
           }
           if (got + expected_size > (int)buffer.size()) {
             
-            lg::info("{}\n",header_buffer.data());
+            //lg::info("{}\n",header_buffer.data());
             //lg::error(
             //    "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
             //    "Size: {}",
