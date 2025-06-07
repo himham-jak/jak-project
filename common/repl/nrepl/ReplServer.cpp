@@ -112,14 +112,16 @@ void ReplServer::http_response(int socket) {
     "\r\n";
 
   std::string chunk1 = str_to_chunk("<html>");
-  std::string chunk2 = str_to_chunk("<h1>Hello World</h1><br><hr><br>Test");
-  std::string chunk3 = str_to_chunk("</html>");
+  std::string chunk2 = str_to_chunk("<canvas id=c width=200 height=200></canvas>");
+  std::string chunk3 = str_to_chunk("<script>setInterval(()=>{c.getContext('2d').fillRect(Math.random()*200,Math.random()*200,2,2)},16)</script>");
+  std::string chunk4 = str_to_chunk("</html>");
   std::string end = "0\r\n\r\n";
 
   write_to_socket(socket, header.c_str(), header.size());
   write_to_socket(socket, chunk1.c_str(), chunk1.size());
   write_to_socket(socket, chunk2.c_str(), chunk2.size());
   write_to_socket(socket, chunk3.c_str(), chunk3.size());
+  write_to_socket(socket, chunk4.c_str(), chunk4.size());
   write_to_socket(socket, end.c_str(), end.size());
 
 }
