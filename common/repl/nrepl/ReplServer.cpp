@@ -102,8 +102,14 @@ std::string str_to_chunk(const std::string& data) {
     return chunk;
 }
 
+int send_str_chunk(int socket, std::string& str_chunk) {
+  std::string chunk = str_to_chunk(str_chunk);
+  return write_to_socket(socket, chunk.c_str(), chunk.size());
+}
+
 // new http response
 void ReplServer::http_response(int socket) {
+  //http header
   std::string header =
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/html\r\n"
@@ -111,17 +117,35 @@ void ReplServer::http_response(int socket) {
     "Connection: keep-alive\r\n"
     "\r\n";
 
-  std::string chunk1 = str_to_chunk("<html>");
-  std::string chunk2 = str_to_chunk("<canvas id=c width=200 height=200></canvas>");
-  std::string chunk3 = str_to_chunk("<script>setInterval(()=>{c.getContext('2d').fillRect(Math.random()*200,Math.random()*200,2,2)},16)</script>");
-  std::string chunk4 = str_to_chunk("</html>");
+  // http footer
   std::string end = "0\r\n\r\n";
 
+  // open html file
+  lg::info("Opening html file now");
+  std::string html_path = "default.html";
+  std::ifstream file(html_path);
+
+  // if fail to open
+  if (!file.is_open()) {
+        // error
+        lg::error("Failed to open file");
+  }
+
+  //end http
   write_to_socket(socket, header.c_str(), header.size());
-  write_to_socket(socket, chunk1.c_str(), chunk1.size());
-  write_to_socket(socket, chunk2.c_str(), chunk2.size());
-  write_to_socket(socket, chunk3.c_str(), chunk3.size());
-  write_to_socket(socket, chunk4.c_str(), chunk4.size());
+
+  // Read the file line by line into a string
+  std::string line;
+  while (getline(file, line)) {
+        // Process each line as needed
+        send_str_chunk(socket,line);
+    }
+
+  // Close the file
+  lg::info("Closing html file now");
+  file.close();
+
+  //end http
   write_to_socket(socket, end.c_str(), end.size());
 
 }

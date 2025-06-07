@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <set>
+#include <fstream>
 
 #include "common/cross_sockets/XSocketServer.h"
 
