@@ -53,6 +53,80 @@ void ReplServer::ping_response(int socket) {
   }
 }
 
+
+// Function to convert decimal
+// to hexadecimal
+std::string decToHexa(int n)
+{
+    // char array to store hexadecimal number
+    char hexaDeciNum[100];
+
+    // Counter for hexadecimal number array
+    int i = 0;
+    while (n != 0) {
+        // Temporary variable to store remainder
+        int temp = 0;
+
+        // Storing remainder in temp variable.
+        temp = n % 16;
+
+        // Check if temp < 10
+        if (temp < 10) {
+            hexaDeciNum[i] = temp + 48;
+            i++;
+        }
+        else {
+            hexaDeciNum[i] = temp + 55;
+            i++;
+        }
+
+        n = n / 16;
+    }
+
+    std::string result;
+
+    // Printing hexadecimal number
+    // array in reverse order
+    for (int j = i - 1; j >= 0; j--)
+        result += hexaDeciNum[j];
+
+    return result;
+}
+
+std::string str_to_chunk(const std::string& data) {
+  lg::error("Datasize d {}",data.size());
+  lg::error("Datasize h {}",decToHexa(data.size()).c_str());
+
+    // Format chunk: <hex-size>\r\n<data>\r\n
+    std::string chunk = decToHexa(data.size()) + "\r\n" + data + "\r\n";
+    return chunk;
+}
+
+// new http response
+void ReplServer::http_response(int socket) {
+  std::string header =
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Transfer-Encoding: chunked\r\n"
+    "Connection: keep-alive\r\n"
+    "\r\n";
+
+  std::string chunk1 = "b\r\nHello World\r\n"; // 0xb=11 bytes, ends with \r\n
+  std::string chunk2 = "5\r\n12345\r\n";
+  std::string end = "0\r\n\r\n";
+
+  std::string chunk3 = str_to_chunk("Hello ze World!");
+  lg::error(chunk3);
+
+  write_to_socket(socket, header.c_str(), header.size());
+  write_to_socket(socket, chunk3.c_str(), chunk3.size());
+  write_to_socket(socket, chunk1.c_str(), chunk1.size());
+  write_to_socket(socket, chunk2.c_str(), chunk2.size());
+  write_to_socket(socket, end.c_str(), end.size());
+
+}
+
+
 std::optional<std::string> ReplServer::get_msg() {
   // Clear the sockets we are listening on
   FD_ZERO(&read_sockets);
@@ -91,7 +165,7 @@ std::optional<std::string> ReplServer::get_msg() {
       lg::info("[nREPL:{}]: New socket connection: {}:{}:{}", tcp_port, address_to_string(addr),
                ntohs(addr.sin_port), new_socket);
       // Say hello
-      ping_response(new_socket);
+      //ping_response(new_socket);
       // Track the new socket
       if ((int)client_sockets.size() < max_clients) {
         client_sockets.insert(new_socket);
@@ -110,6 +184,20 @@ std::optional<std::string> ReplServer::get_msg() {
     if (FD_ISSET(sock, &read_sockets)) {
       // Attempt to read a header
       auto req_bytes = read_from_socket(sock, header_buffer.data(), header_buffer.size());
+
+
+      //if http, branch off
+      
+      // grab the packet bytes
+      std::string test = fmt::format("{}", header_buffer.data());
+
+      // if GET request
+      if (std::strncmp(header_buffer.data(), "GET", 3) == 0) {
+        lg::info("GET REQUEST: {}",test);
+        http_response(sock);
+      }
+
+
       if (req_bytes <= 0) {
         // TODO - add a queue of messages in the REPL::Wrapper so we can print _BEFORE_ the prompt
         // is output
@@ -141,10 +229,12 @@ std::optional<std::string> ReplServer::get_msg() {
             break;
           }
           if (got + expected_size > (int)buffer.size()) {
-            lg::error(
-                "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
-                "Size: {}",
-                tcp_port, got, expected_size, buffer.size());
+            
+            lg::info("{}\n",header_buffer.data());
+            //lg::error(
+            //    "[nREPL:{}]: Bad message, aborting the read.  Got :{}, Expected: {}, Buffer "
+            //    "Size: {}",
+            //    tcp_port, got, expected_size, buffer.size());
             return std::nullopt;
           }
           auto bytes_read = read_from_socket(sock, buffer.data() + got, expected_size - got);
