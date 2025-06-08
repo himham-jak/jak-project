@@ -107,8 +107,8 @@ int send_str_chunk(int socket, std::string& str_chunk) {
   return write_to_socket(socket, chunk.c_str(), chunk.size());
 }
 
-// new http response
-void ReplServer::http_response(int socket) {
+// new float response to get request
+void ReplServer::float_response(int socket) {
   //http header
   std::string header =
     "HTTP/1.1 200 OK\r\n"
@@ -148,6 +148,88 @@ void ReplServer::http_response(int socket) {
   //end http message
   write_to_socket(socket, end.c_str(), end.size());
 }
+
+// new html response to get request
+void ReplServer::html_response(int socket) {
+  //http header
+  std::string header =
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Transfer-Encoding: chunked\r\n"
+    "Connection: keep-alive\r\n"
+    "\r\n";
+
+  // http footer
+  std::string end = "0\r\n\r\n";
+
+  // open html file
+  lg::info("Opening html file now");
+  std::string html_path = "default.html";
+  std::ifstream file(html_path);
+
+  // if fail to open
+  if (!file.is_open()) {
+        // error
+        lg::error("Failed to open file");
+  }
+
+  //start http message
+  write_to_socket(socket, header.c_str(), header.size());
+
+  // Read the file line by line into a string
+  std::string line;
+  while (getline(file, line)) {
+        // send each line as an http chunk
+        send_str_chunk(socket,line);
+    }
+
+  // Close the file
+  lg::info("Closing html file now");
+  file.close();
+
+  //end http message
+  write_to_socket(socket, end.c_str(), end.size());
+}
+
+
+void print_http_request(const void* buffer, int size) {
+    const u8* data = reinterpret_cast<const u8*>(buffer);
+    const int chunk_size = 8;  // bytes received per call
+    static u8 line_buf[16];
+    static int line_len = 0;
+    static int total_offset = 0;
+
+    for (int i = 0; i < size; i += chunk_size) {
+        int len = std::min(chunk_size, size - i);
+        // Copy incoming chunk into line_buf
+        memcpy(line_buf + line_len, data + i, len);
+        line_len += len;
+
+        // If we've accumulated 16 bytes, print the full line
+        if (line_len >= 16) {
+            // Print offset
+            fprintf(stderr, "%08X  ", total_offset);
+
+            // Print hex for full 16 bytes
+            for (int j = 0; j < 16; ++j) {
+                fprintf(stderr, "%02X ", line_buf[j]);
+            }
+            fprintf(stderr, " ");
+
+            // Print ASCII for full 16 bytes
+            for (int j = 0; j < 16; ++j) {
+                u8 c = line_buf[j];
+                fprintf(stderr, "%c", (c >= 32 && c <= 126) ? c : '.');
+            }
+            fprintf(stderr, "\n");
+
+            // Update offset, reset buffer
+            total_offset += 16;
+            line_len = 0;
+        }
+    }
+}
+
 
 
 std::optional<std::string> ReplServer::get_msg() {
@@ -208,17 +290,39 @@ std::optional<std::string> ReplServer::get_msg() {
       // Attempt to read a header
       auto req_bytes = read_from_socket(sock, header_buffer.data(), header_buffer.size());
 
+      // print the http request
+      print_http_request(header_buffer.data(), header_buffer.size());
 
-      //if http, branch off
-      
-      // grab the packet bytes
-      std::string test = fmt::format("{}", header_buffer.data());
-
-      // if GET request
+      // handle http get requests
       if (std::strncmp(header_buffer.data(), "GET", 3) == 0) {
-        lg::info("GET REQUEST: {}",test);
-        http_response(sock);
+        lg::info("GET REQUEST: {}", header_buffer.data());
+
+        // Find the path after "GET "
+        const char* path_start = header_buffer.data() + 4;
+        const char* path_end = path_start + 4;
+
+        std::string path(path_start, path_end);
+        //lg::info("Path {}", path);
+
+        if (path_end) {
+
+          if (path == "/flo") {
+            lg::info("Serving float response");
+            float_response(sock);
+          } else {
+            lg::info("Serving html response");
+            html_response(sock);
+          }
+
+
+
+        // print the http request
+        print_http_request(header_buffer.data(), header_buffer.size());
+        } else {
+          lg::error("Malformed GET request (no path found)");
+        }
       }
+
 
 
       if (req_bytes <= 0) {
