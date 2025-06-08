@@ -159,7 +159,7 @@ void Deci2Server::read_data() {
     // receive from network
     if (hdr->rsvd < hdr->len) {
       auto x = read_from_socket(accepted_socket, buffer.data() + hdr->rsvd, hdr->len - hdr->rsvd);
-      fprintf(stderr, "[DECI2] reading! sock %d buff %02X len %d prog %d \n", accepted_socket, buffer.data() + hdr->rsvd, hdr->len, hdr->rsvd);
+      fprintf(stderr, "[DECI2] reading! sock %d buff %02X len %d prog %d", accepted_socket, buffer.data() + hdr->rsvd, hdr->len, hdr->rsvd);
       if (want_exit_callback()) {
         return;
       }
@@ -180,7 +180,7 @@ void Deci2Server::send_data(void* buf, u16 len) {
     uint16_t prog = 0;
     while (prog < len) {
       int wrote = write_to_socket(accepted_socket, (char*)(buf) + prog, len - prog);
-      fprintf(stderr, "[DECI2] send while connected, sending! sock %d buff %02X len %d prog %d \n", accepted_socket, ((char*)buf), len, prog);
+      fprintf(stderr, "[DECI2] send while connected, sending! sock %d buff %02X len %d prog %d", accepted_socket, ((char*)buf), len, prog);
       prog += wrote;
       if (!client_connected || want_exit_callback()) {
         unlock();

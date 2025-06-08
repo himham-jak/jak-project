@@ -73,9 +73,12 @@ void GoalProtoHandler(int event, int param, void* opt) {
 
   fprintf(stderr, "\n[DECI2] GoalProtoHandler event %d\n", event);
 
+  // define receive buffer data
+  u8* recv_data = nullptr;
+
   switch (event) {
     // get some data - param is the size
-    case DECI2_READ:
+    case DECI2_READ: {
       // sanity check the size
       if (pb->receive_progress + param <= (int)DEBUG_MESSAGE_BUFFER_SIZE) {
         // actually get data from DECI2
@@ -96,7 +99,50 @@ void GoalProtoHandler(int event, int param, void* opt) {
         protoBlock.receive_progress = 0;  // why use protoBlock here?
         printf("gproto: read error, message too large!\n");
       }
+
+      //fish
+      // print the received buffer in a nice hexdump
+      fprintf(stderr, "receive buffer address: %p\n", static_cast<void*>(pb->receive_buffer));
+
+      recv_data = reinterpret_cast<u8*>(pb->receive_buffer);
+      const int bytes_per_line = 16;
+
+      fprintf(stderr, "receive buffer dump:\n");
+      for (int i = 0; i < pb->receive_progress; i += bytes_per_line) {
+          // Print offset
+          fprintf(stderr, "%08X  ", i);
+
+          // Print hex bytes
+          for (int j = 0; j < bytes_per_line; ++j) {
+              if (i + j < pb->receive_progress) {
+                  fprintf(stderr, "%02X ", recv_data[i + j]);
+              } else {
+                  fprintf(stderr, "   ");
+              }
+          }
+
+          fprintf(stderr, " ");
+
+          // Print ASCII representation
+          for (int j = 0; j < bytes_per_line; ++j) {
+              if (i + j < pb->receive_progress) {
+                  u8 c = recv_data[i + j];
+                  fprintf(stderr, "%c", (c >= 32 && c <= 126) ? c : '.');
+              } else {
+                  fprintf(stderr, " ");
+              }
+          }
+
+          fprintf(stderr, "\n");
+      }
+
+      // Final newline if needed
+      if (pb->receive_progress % bytes_per_line != 0) {
+          fprintf(stderr, "\n");
+      }
+
       break;
+    }
 
       // read is finished!
     case DECI2_READDONE:
@@ -177,6 +223,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
 
     fprintf(stderr, "send buffer dump:\n");
     for (int i = 0; i < protoBlock.send_remaining; i += bytes_per_line) {
+
         // Print offset (optional, but can be useful)
         fprintf(stderr, "%08X  ", i);
 
