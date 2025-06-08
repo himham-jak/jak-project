@@ -147,7 +147,6 @@ void ReplServer::http_response(int socket) {
 
   //end http message
   write_to_socket(socket, end.c_str(), end.size());
-
 }
 
 

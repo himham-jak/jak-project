@@ -71,6 +71,8 @@ void GoalProtoHandler(int event, int param, void* opt) {
   pb->most_recent_event = event;
   pb->most_recent_param = param;
 
+  fprintf(stderr, "\n[DECI2] GoalProtoHandler event %d\n", event);
+
   switch (event) {
     // get some data - param is the size
     case DECI2_READ:
@@ -101,6 +103,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
       // set last_receive_size to indicate that there is a pending message in the buffer.
       pb->last_receive_size = pb->receive_progress;
       pb->receive_progress = 0;
+      printf("[DECI2] Read done\n");
       break;
 
       // send some data
@@ -166,6 +169,47 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
     ListenerMessageHeader* header = (ListenerMessageHeader*)(data - sizeof(ListenerMessageHeader));
     protoBlock.send_remaining = size + sizeof(ListenerMessageHeader);
     protoBlock.send_buffer = header;
+
+    fprintf(stderr, "send buffer address: %p\n", static_cast<void*>(protoBlock.send_buffer));
+
+    u8* data = reinterpret_cast<u8*>(protoBlock.send_buffer);
+    const int bytes_per_line = 16;
+
+    fprintf(stderr, "send buffer dump:\n");
+    for (int i = 0; i < protoBlock.send_remaining; i += bytes_per_line) {
+        // Print offset (optional, but can be useful)
+        fprintf(stderr, "%08X  ", i);
+
+        // Print hex bytes
+        for (int j = 0; j < bytes_per_line; ++j) {
+            if (i + j < protoBlock.send_remaining) {
+                fprintf(stderr, "%02X ", data[i + j]);
+            } else {
+                fprintf(stderr, "   ");  // pad for alignment
+            }
+        }
+
+        fprintf(stderr, " ");
+
+        // Print ASCII representation
+        for (int j = 0; j < bytes_per_line; ++j) {
+            if (i + j < protoBlock.send_remaining) {
+                u8 c = data[i + j];
+                fprintf(stderr, "%c", (c >= 32 && c <= 126) ? c : '.');
+            } else {
+                fprintf(stderr, " ");
+            }
+        }
+
+        fprintf(stderr, "\n");
+    }
+
+
+    // Final newline if last line wasn’t a full 16 bytes
+    if (protoBlock.send_remaining % 16 != 0) {
+        fprintf(stderr, "\n");
+    }
+
     protoBlock.send_ptr = (u8*)header;
 
     protoBlock.send_status = size + sizeof(ListenerMessageHeader);

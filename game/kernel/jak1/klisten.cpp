@@ -54,6 +54,13 @@ void InitListener() {
 void ProcessListenerMessage(Ptr<char> msg) {
   // flag that the listener is connected!
   ListenerStatus = 1;
+  fprintf(stderr, "[DECI2] msg_kind %d deci2count %d\n", protoBlock.msg_kind, protoBlock.deci2count);
+    //protoBlock.send_buffer = nullptr;
+    //protoBlock.receive_buffer = MessBufArea.cast<ListenerMessageHeader>().c();
+    //protoBlock.send_status = -1;
+    //protoBlock.last_receive_size = -1;
+    //protoBlock.receive_progress = 0;
+    //protoBlock.deci2count.offset = 0;
   switch (protoBlock.msg_kind) {
     case LTT_MSG_POKE:
       // just flush any pending stuff.

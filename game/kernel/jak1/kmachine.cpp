@@ -338,6 +338,14 @@ int InitMachine() {
 
   if (MasterDebug) {  // connect to GOAL compiler
     InitGoalProto();
+    fprintf(stderr, "Deci2: InitGoalProto Dec2count %d\n", protoBlock.deci2count);
+    //s32 last_receive_size = 0;
+    //s32 receive_progress = 0;
+    //u32 most_recent_event = 0;
+    //u32 most_recent_param = 0;
+    //u32 msg_kind = 0;
+    //u64 msg_id = 0;
+    //Ptr<s32> deci2count;
   } else {
     // shut down the deci2 stuff, we don't need it.
     ee::sceDeci2Disable();
