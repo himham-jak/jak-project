@@ -120,30 +120,14 @@ void ReplServer::float_response(int socket) {
   // http footer
   std::string end = "0\r\n\r\n";
 
-  // open html file
-  lg::info("Opening html file now");
-  std::string html_path = "default.html";
-  std::ifstream file(html_path);
-
-  // if fail to open
-  if (!file.is_open()) {
-        // error
-        lg::error("Failed to open file");
-  }
-
   //start http message
   write_to_socket(socket, header.c_str(), header.size());
 
-  // Read the file line by line into a string
-  std::string line;
-  while (getline(file, line)) {
-        // send each line as an http chunk
-        send_str_chunk(socket,line);
-    }
+  // float in string
+  std::string flt = "1.1";
 
-  // Close the file
-  lg::info("Closing html file now");
-  file.close();
+  // send float in string
+  send_str_chunk(socket,flt);
 
   //end http message
   write_to_socket(socket, end.c_str(), end.size());
