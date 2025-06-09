@@ -216,12 +216,12 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
     protoBlock.send_remaining = size + sizeof(ListenerMessageHeader);
     protoBlock.send_buffer = header;
 
-    fprintf(stderr, "send buffer address: %p\n", static_cast<void*>(protoBlock.send_buffer));
+    fprintf(stderr, "send_buffer address: %p\n", static_cast<void*>(protoBlock.send_buffer));
 
     u8* data = reinterpret_cast<u8*>(protoBlock.send_buffer);
     const int bytes_per_line = 16;
 
-    fprintf(stderr, "send buffer dump:\n");
+    fprintf(stderr, "send_buffer dump:\n");
     for (int i = 0; i < protoBlock.send_remaining; i += bytes_per_line) {
 
         // Print offset (optional, but can be useful)
@@ -238,15 +238,32 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
 
         fprintf(stderr, " ");
 
+        // assemble ascii string
+        std::string ascii_str;
+
         // Print ASCII representation
         for (int j = 0; j < bytes_per_line; ++j) {
             if (i + j < protoBlock.send_remaining) {
                 u8 c = data[i + j];
+                ascii_str += static_cast<char>(c);
                 fprintf(stderr, "%c", (c >= 32 && c <= 126) ? c : '.');
             } else {
                 fprintf(stderr, " ");
             }
         }
+
+        // Cut off everything after the newline
+        size_t pos = ascii_str.find('\n');
+
+        if (pos != std::string::npos) {
+            ascii_str = ascii_str.substr(0, pos);
+        }
+
+        // print ascii
+        fprintf(stderr, "Ascii Str: %s", ascii_str.c_str());
+
+        // send full ascii string
+        //send_str_chunk(socket, ascii_str.c_str())
 
         fprintf(stderr, "\n");
     }
