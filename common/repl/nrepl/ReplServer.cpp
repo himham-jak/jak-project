@@ -123,8 +123,11 @@ void ReplServer::float_response(int socket) {
   //start http message
   write_to_socket(socket, header.c_str(), header.size());
 
+  // padding to accomodate for deci2 header (32 bytes)
+  std::string pad = "................................";
+
   // float in string
-  std::string flt = "1.1";
+  std::string flt = pad + "1.1\nabcdefg";
 
   // send float in string
   send_str_chunk(socket,flt);

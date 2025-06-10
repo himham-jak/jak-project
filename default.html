@@ -17,7 +17,10 @@
           throw new Error(`Server error: ${response.status}`);
         }
         const text = await response.text();
-        document.getElementById('value').textContent = text.trim();
+        const trimmedHeader = text.slice(32);
+        const trimmed = trimmedHeader.split('\n')[0];
+        document.getElementById('value').textContent = trimmed.trim();
+
       } catch (err) {
         console.error('Fetch error:', err);
         document.getElementById('value').textContent = 'Error fetching data';
