@@ -137,7 +137,7 @@ void ReplServer::float_response(int socket) {
 }
 
 // new html response to get request
-void ReplServer::html_response(int socket) {
+void ReplServer::html_response(int socket, std::string& html_filename) {
   //http header
   std::string header =
     "HTTP/1.1 200 OK\r\n"
@@ -151,7 +151,7 @@ void ReplServer::html_response(int socket) {
 
   // open html file
   lg::info("Opening html file now");
-  std::string html_path = "default.html";
+  std::string html_path = html_filename + ".html";
   std::ifstream file(html_path);
 
   // if fail to open
@@ -298,7 +298,8 @@ std::optional<std::string> ReplServer::get_msg() {
             float_response(sock);
           } else {
             lg::info("Serving html response");
-            html_response(sock);
+            std::string html_fname = "default";
+            html_response(sock, html_fname);
           }
 
 

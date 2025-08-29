@@ -30,6 +30,6 @@ class ReplServer : public XSocketServer {
 
   void error_response(int socket, const std::string& error);
   void ping_response(int socket);
-  void html_response(int socket);
-  void float_response(int socket);
+  void html_response(int socket, std::string& html_filename);
+  void float_response(int socket, std::string& float_str);
 };

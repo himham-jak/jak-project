@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "common/log/log.h"
 #include "game/kernel/common/kprint.h"
 #include "game/sce/deci2.h"
 #include "game/system/deci_common.h"
@@ -258,6 +259,14 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
         if (pos != std::string::npos) {
             ascii_str = ascii_str.substr(0, pos);
         }
+
+        // skip 0x20 then report the value
+        if (i == 2 * bytes_per_line) {
+          lg::debug("[DECI2] Value to send: {}", ascii_str.c_str());
+          printf("[DECI2] Float: %4.8f\n" ,atof(ascii_str.c_str()));
+        }
+
+        //next send it http styleey
 
         // print ascii
         fprintf(stderr, "Ascii Str: %s", ascii_str.c_str());
